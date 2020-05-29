@@ -29,9 +29,11 @@ func NewKey() *Key {
 
 	k := &Key{new([32]byte), new([32]byte)}
 
+	// The seed, which is actually just a representation of the Private Spend Key itself
 	copy(k.spendKey[:], seed[:])
 	moneroutil.ScReduce32((*moneroutil.Key)(k.spendKey))
 
+	// The Private View Key is derived by hashing the Private Spend Key with Keccak-256
 	k.viewKey = keccak256(k.spendKey[:])
 	moneroutil.ScReduce32((*moneroutil.Key)(k.viewKey))
 
@@ -40,7 +42,10 @@ func NewKey() *Key {
 
 // Mnemonic encodes a key to mnemonic seeds.
 func (k *Key) Mnemonic() []string {
+
 	w := new([25]string)
+
+	// Mnemonics convert on a ratio of 4:3 minimum: four bytes creates three words, plus one checksum word
 	size := uint32(len(words))
 	for i := 0; i < 32; i += 4 {
 		x := binary.LittleEndian.Uint32(k.spendKey[i : i+4])
@@ -52,7 +57,7 @@ func (k *Key) Mnemonic() []string {
 		w[i/4*3+2] = words[w3]
 	}
 
-	// check sum words
+	// checksum word
 	h := crc32.NewIEEE()
 	for _, v := range w[:24] {
 		r := string([]rune(v)[:3])
@@ -67,13 +72,27 @@ func (k *Key) Mnemonic() []string {
 
 // Address encodes public spend key and view key in base58 format.
 func (k *Key) Address() string {
+
+	// The Private Spend Key and Private View Key are sent to the ed25519 scalarmult function
+	// to create their counterparts, the Public Spend Key and Public View Key
 	spendPub := publicKeyFromPrivateKey(k.spendKey)
 	viewPub := publicKeyFromPrivateKey(k.viewKey)
 
 	// monero main network
 	network := []byte{0x12}
 
+	// The pair of public keys are prepended with one network byte (the number 18, 0x12, for Monero).
+	// It looks like this: (network byte) + (32-byte public spend key) + (32-byte public view key).
+	// These 65 bytes are hashed with Keccak-256.
 	hash := keccak256(network, spendPub[:], viewPub[:])
+
+	// The first four bytes of the hash are appended, creating a 69-byte Public Address.
+	// As a last step, this 69-byte string is converted to Base58.
+	// However, it's not done all at once like a Bitcoin address, but rather in 8-byte blocks.
+	// This gives us eight full-sized blocks and one 5-byte block. Eight bytes converts to 11 or less Base58 characters;
+	// if a particular block converts to <11 characters, the conversion pads it with "1"s (1 is 0 in Base58).
+	// Likewise, the final 5-byte block can convert to 7 or less Base58 digits; the conversion will ensure the result is 7 digits.
+	// Due to the conditional padding, the 69-byte string will always convert to 95 Base58 characters (8 * 11 + 7).
 	address := moneroutil.EncodeMoneroBase58(network, spendPub[:], viewPub[:], hash[:4])
 
 	return address
@@ -120,6 +139,7 @@ func main() {
 	fmt.Println()
 }
 
+// English Mnemonic: https://github.com/monero-project/monero/blob/master/src/mnemonics/english.h
 var words = &[...]string{
 	"abbey",
 	"abducts",
