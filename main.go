@@ -1,13 +1,12 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"hash/crc32"
-	"crypto/rand"
 	"strings"
-	"time"
 	"unsafe"
 
 	"github.com/paxos-bankchain/moneroutil"
@@ -24,12 +23,8 @@ type Key struct {
 // NewKey construsts a Key with random seed.
 func NewKey() *Key {
 	seed := new([32]byte)
-	_, err := rand.Read(seed[:])
+	rand.Read(seed[:])
 
-	if err != nil {
-		log.Fatalln(err)
-	}
-	
 	k := &Key{new([32]byte), new([32]byte)}
 
 	// The seed, which is actually just a representation of the Private Spend Key itself
