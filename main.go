@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"hash/crc32"
-	"math/rand"
+	"crypto/rand"
 	"strings"
 	"time"
 	"unsafe"
@@ -23,10 +23,13 @@ type Key struct {
 
 // NewKey construsts a Key with random seed.
 func NewKey() *Key {
-	rand.Seed(time.Now().UTC().UnixNano())
 	seed := new([32]byte)
-	rand.Read(seed[:])
+	_, err := rand.Read(seed[:])
 
+	if err != nil {
+		log.Fatalln(err)
+	}
+	
 	k := &Key{new([32]byte), new([32]byte)}
 
 	// The seed, which is actually just a representation of the Private Spend Key itself
