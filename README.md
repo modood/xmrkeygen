@@ -18,7 +18,7 @@ Installation
 ------------
 
 ```
-$ go get -u github.com/modood/xmrkeygen
+$ go install github.com/modood/xmrkeygen@latest
 ```
 
 Example
